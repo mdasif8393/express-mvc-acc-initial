@@ -9,17 +9,22 @@ const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 const nodemailer = require("nodemailer");
 const dbConnect = require("./utils/dbConnect");
 const toolsRoutes = require("./routes/v1/tools.route");
+const viewCount = require("./middleware/viewCount");
+
 
 app.use(cors());
 app.use(express.json());
 
 
 
+//viewCount middleware
+// app.use(viewCount);
+
 //call database connection from dbConnect.js
 dbConnect();
 
 //use tools router
-app.use("/v1/api/tools", toolsRoutes)
+app.use("/api/v1/tools", toolsRoutes)
 
 async function run() {
   try {
