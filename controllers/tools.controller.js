@@ -1,49 +1,126 @@
+const { ObjectId } = require("mongodb");
+const { getDb } = require("../utils/dbConnect");
+
 let tools = [
-    { id: 1, name: "Hammer" },
-    { id: 2, name: "Hammer2" },
-    { id: 3, name: "Hammer3" }
+  { id: 1, name: "Hammer" },
+  { id: 2, name: "Hammer2" },
+  { id: 3, name: "Hammer3" },
 ];
 
-module.exports.getAllTools = (req, res, next) => {
+module.exports.getAllTools = async (req, res, next) => {
+  try {
     const { limit, page } = req.query;
-    res.json(tools.slice(0, limit))
-}
+    const db = getDb();
 
-module.exports.saveATool = (req, res, next) => {
+    //cursor => toArray(), forEach()
+    const tool = await db
+      .collection("tools")
+      .find({})
+      // .project({ _id: 0 })
+      .skip(+page * limit)
+      .limit(+limit)
+      .toArray();
+    res.status(200).json({ success: true, data: tool });
+  } catch (error) {
+    next(error);
+  }
+};
 
-    tools.push(req.body)
-    res.send(tools)
-}
+module.exports.saveATool = async (req, res, next) => {
+  try {
+    const db = getDb();
+    const tool = req.body;
 
-module.exports.getToolDetail = (req, res, next) => {
+    const result = await db.collection("tools").insertOne(tool);
+    console.log(result);
+    if (!result.insertedId) {
+      return res
+        .status(404)
+        .send({ status: false, error: "Something went wrong" });
+    }
+
+    res.send({
+      success: true,
+      message: `Tool added with id: ${result.insertedId}`,
+    });
+  } catch (error) {
+    //give error to global error handler in index.js
+    next(error);
+  }
+};
+
+module.exports.getToolDetail = async (req, res, next) => {
+  try {
+    const db = getDb();
     const { id } = req.params;
-    // const filter ={_id: id}
-    const foundTool = tools.find(tool => tool.id === Number(id));
-    res.status(200).send({
-        success: true,
-        message: "Success",
-        data: foundTool
-    })
-    res.status(500).send({
-        success: false,
-        error: "Internal Server Error"
-    })
-}
 
-module.exports.updateTool = (req, res, next) => {
-    // const newData = req.body;
+    if(!ObjectId.isValid(id)){
+      return res.status(400).json({success: false, error: "Not a valid tool Id"})
+    }
+
+    const tool = await db.collection("tools").findOne({ _id: ObjectId(id) });
+
+    if(!tool){
+      return res.status(400).json({success: false, error: "Couldn't find a tool with this id"});
+    }
+    res.status(200).json({success: true, data: tool});
+  }
+   catch (error) {
+    next(error);
+  }
+};
+
+module.exports.updateTool = async (req, res, next) => {
+  try {
+    const db = getDb();
     const { id } = req.params;
-    // const filter = { _id: id };
-    const newData = tools.find(tool => tool.id === Number(id));
-    newData.id = id;
-    newData.name = req.body.name;
-    res.send(newData);
-}
 
-module.exports.deleteTool = (req, res) => {
-    const {id} = req.params;
-    const filter = {_id: id};
-    tools = tools.filter (tool => tool.id !== Number(id));
-    res.send(tools)
+    if(!ObjectId.isValid(id)){
+      return res.status(400).json({success: false, error: "Not a valid tool Id"})
+    }
 
-}
+    const tool = await db.collection("tools").updateOne({ _id: ObjectId(id) },{$set: req.body});
+
+    if(!tool.modifiedCount){
+      return res.status(400).json({success: false, error: "Couldn't update the tool"});
+    }
+    res.status(200).json({success: true, message: "Successfully updated the tool"});
+  }
+   catch (error) {
+    next(error);
+  }
+};
+
+module.exports.deleteTool = async (req, res, next) => {
+  try {
+    const db = getDb();
+    const { id } = req.params;
+
+    if(!ObjectId.isValid(id)){
+      return res.status(400).json({success: false, error: "Not a valid tool Id"})
+    }
+
+    const tool = await db.collection("tools").deleteOne({ _id: ObjectId(id) });
+
+    if(!tool.deletedCount){
+      return res.status(400).json({success: false, error: "Couldn't delete the tool"});
+    }
+    res.status(200).json({success: true, message: "Successfully deleted the tool"});
+  }
+   catch (error) {
+    next(error);
+  }
+};
+
+module.exports.test = async(req, res, next) => {
+  for (let i = 0; i < 100000; i++) {
+    const db = getDb();
+    db.collection("test").insertOne({name: `test ${i}`, age: i });
+  }
+};
+module.exports.testGet = async(req, res, next) => {
+  const db = getDb();
+
+  const result = await db.collection("test").find({ age: 99999}).toArray();
+  res.json(result);
+};

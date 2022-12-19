@@ -47,6 +47,8 @@ router
 */
   .post(toolsControllers.saveATool)
 
+  router.route("/test").post(toolsControllers.test).get(toolsControllers.testGet);
+
 router
   .route("/:id")
   .get(viewCount, limiter, toolsControllers.getToolDetail)
